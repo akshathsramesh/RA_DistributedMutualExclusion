@@ -63,8 +63,8 @@ public class Client {
                 while (line != null) {
                     sb.append(line);
                     List<String> parsed_client = Arrays.asList(line.split(","));
-                    Node n1 = new Node(parsed_client.get(0),parsed_client.get(1),parsed_client.get(2));
-                    this.getAllClientNodes().add(n1);
+                    Node n_client= new Node(parsed_client.get(0),parsed_client.get(1),parsed_client.get(2));
+                    this.getAllClientNodes().add(n_client);
                     sb.append(System.lineSeparator());
                     line = br.readLine();
                 }
@@ -110,15 +110,12 @@ public class Client {
     }
     public static void main(String[] args) {
 
-
 //        check for arguments and use the client id to start the client node
-
 
         Client C1 = new Client("1");
         C1.setClientList();
         C1.setServerList();
         System.out.println("Starting Client with ID: " + C1.getId());
-
 
     }
 }

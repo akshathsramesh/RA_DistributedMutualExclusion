@@ -1,8 +1,12 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Client {
 
@@ -11,6 +15,10 @@ public class Client {
     List<Node> allClientNodes = new LinkedList<>();
     List<Node> allServerNodes = new LinkedList<>();
     Integer logicalClock = 0;
+    List<SocketConnection> socketConnectionList = new LinkedList<>();
+    ServerSocket server;
+    HashMap<String,SocketConnection> socketConnectionHashMap = new HashMap<>();
+
 
     public Client(String id) {
         this.Id = id;
@@ -50,6 +58,113 @@ public class Client {
         this.logicalClock = logicalClock;
     }
 
+    public class CommandParser extends Thread{
+        Pattern SETUP = Pattern.compile("^SETUP$");
+        Pattern START = Pattern.compile("^START$");
+        Pattern CLOSE = Pattern.compile("^CLOSE$");
+        int rx_cmd(Scanner cmd){
+            String cmd_in = null;
+            if (cmd.hasNext())
+                cmd_in = cmd.nextLine();
+            Matcher m_SETUP = SETUP.matcher(cmd_in);
+            Matcher m_START = START.matcher(cmd_in);
+            Matcher m_CLOSE = CLOSE.matcher(cmd_in);
+
+            if(m_SETUP.find()){
+                setupConnections();
+            }
+
+            else if(m_START.find()){
+                sendP();
+
+            }
+
+            else if(m_CLOSE.find()){
+                System.out.println("Number of socket connection");
+                System.out.println(socketConnectionList.size());
+                Integer i = 0;
+                for(i = 0; i < socketConnectionList.size(); i++){
+                    System.out.println("IP: " + socketConnectionList.get(i).getOtherClient().getInetAddress() + "Port: " + socketConnectionList.get(i).getOtherClient().getPort() + "ID: " + socketConnectionList.get(i).getRemote_id());
+                }
+            }
+            return 1;
+        }
+
+        public void run() {
+            System.out.println("Enter commands to set-up MESH Connection : START");
+            Scanner input = new Scanner(System.in);
+            while(rx_cmd(input) != 0) { }
+        }
+    }
+
+
+    public void setupConnections(){
+        try {
+            System.out.println("START THE CONNECTION TO OTHER CLIENTS");
+            Integer clientId;
+            for(clientId = Integer.valueOf(this.Id) + 1; clientId < allClientNodes.size(); clientId ++ ) {
+                Socket clientConnection = new Socket("10.122.168.54", Integer.valueOf(allClientNodes.get(clientId).getPort()));
+                SocketConnection socketConnection = new SocketConnection(clientConnection, this.getId(), true);
+                if(socketConnection.getRemote_id() == null){
+                    socketConnection.setRemote_id(Integer.toString(clientId));
+                }
+                socketConnectionList.add(socketConnection);
+                socketConnectionHashMap.put(socketConnection.getRemote_id(),socketConnection);
+            }
+        }
+        catch (Exception e){
+
+        }
+    }
+
+
+    public void sendP(){
+        System.out.println("Sending P");
+        Integer i;
+        for (i=0; i < this.socketConnectionList.size(); i++){
+            socketConnectionList.get(i).publish();
+        }
+    }
+
+
+    public void clientSocket(Integer ClientId){
+        try
+        {
+            server = new ServerSocket(Integer.valueOf(this.allClientNodes.get(ClientId).port));
+            Id = Integer.toString(ClientId);
+            System.out.println("Client node running on port " + Integer.valueOf(this.allClientNodes.get(ClientId).port) +"," + " use ctrl-C to end");
+            InetAddress myip = InetAddress.getLocalHost();
+            String ip = myip.getHostAddress();
+            String hostname = myip.getHostName();
+            System.out.println("Your current IP address : " + ip);
+            System.out.println("Your current Hostname : " + hostname);
+        }
+        catch (IOException e)
+        {
+            System.out.println("Error creating socket");
+            System.exit(-1);
+        }
+
+        CommandParser cmdpsr = new CommandParser();
+        cmdpsr.start();
+
+        Thread current_node = new Thread() {
+            public void run(){
+                while(true){
+                    try{
+                        Socket s = server.accept();
+                        SocketConnection socketConnection = new SocketConnection(s,Id,false);
+                        socketConnectionList.add(socketConnection);
+                        socketConnectionHashMap.put(socketConnection.getRemote_id(),socketConnection);
+                    }
+                    catch(IOException e){ e.printStackTrace(); }
+                }
+            }
+        };
+
+        current_node.setDaemon(true);
+        current_node.start();
+    }
 
 
 
@@ -108,14 +223,22 @@ public class Client {
         }
 
     }
+
+
+
     public static void main(String[] args) {
 
-//        check for arguments and use the client id to start the client node
+        if (args.length != 1)
+        {
+            System.out.println("Usage: java Client <port-number>");
+            System.exit(1);
+        }
 
-        Client C1 = new Client("1");
+        Client C1 = new Client(args[0]);
         C1.setClientList();
         C1.setServerList();
-        System.out.println("Starting Client with ID: " + C1.getId());
+        C1.clientSocket(Integer.valueOf(args[0]));
 
+        System.out.println("Starting Client with ID: " + C1.getId());
     }
 }

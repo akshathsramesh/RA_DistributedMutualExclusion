@@ -59,9 +59,17 @@ public class Client {
     }
 
     public class CommandParser extends Thread{
+
+        Client current;
+
+        public CommandParser(Client current){
+            this.current = current;
+        }
+
         Pattern SETUP = Pattern.compile("^SETUP$");
         Pattern START = Pattern.compile("^START$");
         Pattern CLOSE = Pattern.compile("^CLOSE$");
+        Pattern REQUEST = Pattern.compile("^REQUEST$");
         int rx_cmd(Scanner cmd){
             String cmd_in = null;
             if (cmd.hasNext())
@@ -69,14 +77,19 @@ public class Client {
             Matcher m_SETUP = SETUP.matcher(cmd_in);
             Matcher m_START = START.matcher(cmd_in);
             Matcher m_CLOSE = CLOSE.matcher(cmd_in);
+            Matcher m_REQUEST = REQUEST.matcher(cmd_in);
 
             if(m_SETUP.find()){
-                setupConnections();
+                setupConnections(current);
             }
 
             else if(m_START.find()){
                 sendP();
 
+            }
+
+            else if(m_REQUEST.find()){
+                sendRequest();
             }
 
             else if(m_CLOSE.find()){
@@ -85,6 +98,10 @@ public class Client {
                 Integer i = 0;
                 for(i = 0; i < socketConnectionList.size(); i++){
                     System.out.println("IP: " + socketConnectionList.get(i).getOtherClient().getInetAddress() + "Port: " + socketConnectionList.get(i).getOtherClient().getPort() + "ID: " + socketConnectionList.get(i).getRemote_id());
+                }
+
+                for (String key: socketConnectionHashMap.keySet()){
+                    System.out.println("ClientID: " + key + "Socket: " + socketConnectionHashMap.get(key).getOtherClient().getPort());
                 }
             }
             return 1;
@@ -98,13 +115,13 @@ public class Client {
     }
 
 
-    public void setupConnections(){
+    public void setupConnections(Client current){
         try {
             System.out.println("START THE CONNECTION TO OTHER CLIENTS");
             Integer clientId;
             for(clientId = Integer.valueOf(this.Id) + 1; clientId < allClientNodes.size(); clientId ++ ) {
                 Socket clientConnection = new Socket("10.122.168.54", Integer.valueOf(allClientNodes.get(clientId).getPort()));
-                SocketConnection socketConnection = new SocketConnection(clientConnection, this.getId(), true);
+                SocketConnection socketConnection = new SocketConnection(clientConnection, this.getId(), true,current);
                 if(socketConnection.getRemote_id() == null){
                     socketConnection.setRemote_id(Integer.toString(clientId));
                 }
@@ -126,8 +143,16 @@ public class Client {
         }
     }
 
+    public void sendRequest(){
+        System.out.println("Sending Request");
+        Integer i;
+        for (i=0; i < this.socketConnectionList.size(); i++){
+            socketConnectionList.get(i).request();
+        }
+    }
 
-    public void clientSocket(Integer ClientId){
+
+    public void clientSocket(Integer ClientId, Client current){
         try
         {
             server = new ServerSocket(Integer.valueOf(this.allClientNodes.get(ClientId).port));
@@ -145,7 +170,7 @@ public class Client {
             System.exit(-1);
         }
 
-        CommandParser cmdpsr = new CommandParser();
+        CommandParser cmdpsr = new CommandParser(current);
         cmdpsr.start();
 
         Thread current_node = new Thread() {
@@ -153,7 +178,7 @@ public class Client {
                 while(true){
                     try{
                         Socket s = server.accept();
-                        SocketConnection socketConnection = new SocketConnection(s,Id,false);
+                        SocketConnection socketConnection = new SocketConnection(s,Id,false, current);
                         socketConnectionList.add(socketConnection);
                         socketConnectionHashMap.put(socketConnection.getRemote_id(),socketConnection);
                     }
@@ -237,7 +262,7 @@ public class Client {
         Client C1 = new Client(args[0]);
         C1.setClientList();
         C1.setServerList();
-        C1.clientSocket(Integer.valueOf(args[0]));
+        C1.clientSocket(Integer.valueOf(args[0]),C1);
 
         System.out.println("Starting Client with ID: " + C1.getId());
     }

@@ -12,6 +12,7 @@ public class SocketConnection {
     BufferedReader in;
     PrintWriter out;
     Boolean Initiator;
+    Client my_master;
 
     public String getRemote_id() {
         return remote_id;
@@ -21,9 +22,10 @@ public class SocketConnection {
         this.remote_id = remote_id;
     }
 
-    public SocketConnection(Socket otherClient, String myId, Boolean Initiator) {
+    public SocketConnection(Socket otherClient, String myId, Boolean Initiator, Client my_master) {
         this.otherClient = otherClient;
         this.my_id = myId;
+        this.my_master = my_master;
         try{
            in = new BufferedReader(new InputStreamReader(this.otherClient.getInputStream()));
            out = new PrintWriter(this.otherClient.getOutputStream(), true);
@@ -37,7 +39,7 @@ public class SocketConnection {
                 out.println("SEND_ID");
                 System.out.println("SEND_ID request sent");
                 remote_id = in.readLine();
-                System.out.println("SEND_ID request response recieved with ID: " + remote_id);
+                System.out.println("SEND_ID request response received with ID: " + remote_id);
             }
         }
 
@@ -64,6 +66,10 @@ public class SocketConnection {
             else if(cmd_in.equals("SEND_ID")){
                 out.println(this.my_id);
             }
+            else if(cmd_in.equals("REQ")){
+                System.out.println("Received Request and Hence calling sendP on all available connection");
+                my_master.sendP();
+            }
         }
         catch (Exception e){}
         return 1;
@@ -72,6 +78,17 @@ public class SocketConnection {
 
     public void publish() {
         out.println("P");
+    }
+
+
+    public void request(){
+        System.out.println("SENDING REQ FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
+        out.println("REQ");
+    }
+
+    public void release(){
+        System.out.println("SENDING REQ FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
+        out.println("REL");
     }
 
     public Socket getOtherClient() {

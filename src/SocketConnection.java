@@ -67,8 +67,15 @@ public class SocketConnection {
                 out.println(this.my_id);
             }
             else if(cmd_in.equals("REQ")){
-                System.out.println("Received Request and Hence calling sendP on all available connection");
-                my_master.sendP();
+                String RequestingClientId = cmd.readLine();
+                Integer RequestingClientLogicalClock = Integer.valueOf(cmd.readLine());
+                System.out.println("Received Request from Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
+                System.out.println("Calling Client: " + this.my_id +"'s request processor");
+                my_master.processRequest(RequestingClientId, RequestingClientLogicalClock );
+            }
+
+            else if(cmd_in.equals("REP")){
+                System.out.println("Received Repl");
             }
         }
         catch (Exception e){}
@@ -81,14 +88,16 @@ public class SocketConnection {
     }
 
 
-    public void request(){
+    public void request(Integer logicalClock){
         System.out.println("SENDING REQ FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
         out.println("REQ");
+        out.println(this.my_id);
+        out.println(logicalClock);
     }
 
-    public void release(){
+    public void reply(){
         System.out.println("SENDING REQ FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
-        out.println("REL");
+        out.println("REP");
     }
 
     public Socket getOtherClient() {

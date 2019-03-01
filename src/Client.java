@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,7 +19,9 @@ public class Client {
     List<SocketConnection> socketConnectionList = new LinkedList<>();
     ServerSocket server;
     HashMap<String,SocketConnection> socketConnectionHashMap = new HashMap<>();
-
+    Integer highestLogicalClockValue = 0;
+    Integer outStandingReplyCount = 0;
+    Boolean requestingCS = false;
 
     public Client(String id) {
         this.Id = id;
@@ -143,11 +146,40 @@ public class Client {
         }
     }
 
+
+    public void processRequest(String RequestingClientId, Integer RequestingClientLogicalClock){
+        System.out.println("Inside Process Request for request Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
+    }
+
+
+    public void processReply(String ReplyingClientId){
+        System.out.println("Inside Process Reply for replying Client:  "+ ReplyingClientId);
+        this.outStandingReplyCount = this.outStandingReplyCount -1;
+        if(this.outStandingReplyCount == 0 ){
+            enterCriticalSection();
+        }
+        this.requestingCS = false;
+    }
+
     public void sendRequest(){
+        this.requestingCS = true;
+        this.outStandingReplyCount = 3;
         System.out.println("Sending Request");
         Integer i;
         for (i=0; i < this.socketConnectionList.size(); i++){
-            socketConnectionList.get(i).request();
+            socketConnectionList.get(i).request(logicalClock);
+        }
+    }
+
+    public void enterCriticalSection(){
+        System.out.println("Entering critical section READ/WRITE TO SEVER");
+        try {
+            System.out.println("System currently mocks CS execution by sleep - Started");
+            TimeUnit.SECONDS.sleep(10);
+            System.out.println("System currently mocks CS execution by sleep - Completed");
+        }
+        catch (Exception e){
+
         }
     }
 

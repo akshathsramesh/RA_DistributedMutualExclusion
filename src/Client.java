@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
 
 public class Client {
 
-
     String Id;
     List<Node> allClientNodes = new LinkedList<>();
     List<Node> allServerNodes = new LinkedList<>();
@@ -35,7 +34,6 @@ public class Client {
         this.Id = id;
     }
 
-
     public List<Node> getAllClientNodes() {
         return allClientNodes;
     }
@@ -43,7 +41,6 @@ public class Client {
     public void setAllClientNodes(List<Node> allClientNodes) {
         this.allClientNodes = allClientNodes;
     }
-
 
     public List<Node> getAllServerNodes() {
         return allServerNodes;
@@ -117,7 +114,6 @@ public class Client {
         }
     }
 
-
     public void setupConnections(Client current){
         try {
             System.out.println("START THE CONNECTION TO OTHER CLIENTS");
@@ -137,7 +133,6 @@ public class Client {
         }
     }
 
-
     public void sendP(){
         System.out.println("Sending P");
         Integer i;
@@ -149,8 +144,10 @@ public class Client {
 
     public void processRequest(String RequestingClientId, Integer RequestingClientLogicalClock){
         System.out.println("Inside Process Request for request Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
-    }
+        SocketConnection requestingSocketConnection = socketConnectionHashMap.get(RequestingClientId);
+        requestingSocketConnection.reply();
 
+    }
 
     public void processReply(String ReplyingClientId){
         System.out.println("Inside Process Reply for replying Client:  "+ ReplyingClientId);
@@ -224,7 +221,6 @@ public class Client {
     }
 
 
-
     public void setClientList(){
         try {
             BufferedReader br = new BufferedReader(new FileReader("ClientAddressAndPorts.txt"));
@@ -280,8 +276,6 @@ public class Client {
         }
 
     }
-
-
 
     public static void main(String[] args) {
 

@@ -143,11 +143,19 @@ public class Client {
         }
     }
 
+
+    public void processRequest(){
+
+    }
+
+
+    public void processReply(){}
+
     public void sendRequest(){
         System.out.println("Sending Request");
         Integer i;
         for (i=0; i < this.socketConnectionList.size(); i++){
-            socketConnectionList.get(i).request();
+            socketConnectionList.get(i).request(logicalClock);
         }
     }
 

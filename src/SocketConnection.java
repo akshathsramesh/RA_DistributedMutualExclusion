@@ -75,7 +75,9 @@ public class SocketConnection {
             }
 
             else if(cmd_in.equals("REP")){
-                System.out.println("Received Repl");
+                String ReplyingClientId = cmd.readLine();
+                System.out.println("Received Reply from Client: " + ReplyingClientId);
+                my_master.processReply(ReplyingClientId);
             }
         }
         catch (Exception e){}
@@ -96,8 +98,9 @@ public class SocketConnection {
     }
 
     public void reply(){
-        System.out.println("SENDING REQ FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
+        System.out.println("SENDING REP FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
         out.println("REP");
+        out.println(this.my_id);
     }
 
     public Socket getOtherClient() {

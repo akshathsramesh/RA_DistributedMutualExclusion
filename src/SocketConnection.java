@@ -91,14 +91,14 @@ public class SocketConnection {
 
 
     public void request(Integer logicalClock){
-        System.out.println("SENDING REQ FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
+        System.out.println("SENDING REQ FROM CLIENT WITH CLIENT ID" + this.my_id);
         out.println("REQ");
         out.println(this.my_id);
         out.println(logicalClock);
     }
 
     public void reply(){
-        System.out.println("SENDING REP FROM CLIENT FROM MACHINE WITH CLIENT ID" + this.my_id);
+        System.out.println("SENDING REP FROM CLIENT" + this.my_id +" TO CLIENT ID" + this.getRemote_id());
         out.println("REP");
         out.println(this.my_id);
     }

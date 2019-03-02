@@ -5,6 +5,8 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,9 +20,12 @@ public class Client {
     List<SocketConnection> socketConnectionList = new LinkedList<>();
     ServerSocket server;
     HashMap<String,SocketConnection> socketConnectionHashMap = new HashMap<>();
+    HashMap<String,Boolean> clientPermissionRequired = new HashMap<>();
     Integer highestLogicalClockValue = 0;
     Integer outStandingReplyCount = 0;
-    Boolean requestingCS = false;
+    Boolean requestedCS = false;
+    Boolean usingCS = false;
+    List<String> deferredReplyList = new LinkedList<>();
 
     public Client(String id) {
         this.Id = id;
@@ -68,17 +73,18 @@ public class Client {
 
         Pattern SETUP = Pattern.compile("^SETUP$");
         Pattern START = Pattern.compile("^START$");
-        Pattern CLOSE = Pattern.compile("^CLOSE$");
+        Pattern CONNECTION_DETAIL = Pattern.compile("^CONNECTION_DETAIL$");
         Pattern REQUEST = Pattern.compile("^REQUEST$");
+        Pattern AUTO_REQUEST = Pattern.compile("^AUTO_REQUEST$");
         int rx_cmd(Scanner cmd){
             String cmd_in = null;
             if (cmd.hasNext())
                 cmd_in = cmd.nextLine();
             Matcher m_SETUP = SETUP.matcher(cmd_in);
             Matcher m_START = START.matcher(cmd_in);
-            Matcher m_CLOSE = CLOSE.matcher(cmd_in);
+            Matcher m_CONNECTION_DETAIL = CONNECTION_DETAIL.matcher(cmd_in);
             Matcher m_REQUEST = REQUEST.matcher(cmd_in);
-
+            Matcher m_AUTO_REQUEST = AUTO_REQUEST.matcher(cmd_in);
             if(m_SETUP.find()){
                 setupConnections(current);
             }
@@ -92,7 +98,7 @@ public class Client {
                 sendRequest();
             }
 
-            else if(m_CLOSE.find()){
+            else if(m_CONNECTION_DETAIL.find()){
                 System.out.println("Number of socket connection");
                 System.out.println(socketConnectionList.size());
                 Integer i = 0;
@@ -104,6 +110,11 @@ public class Client {
                     System.out.println("ClientID: " + key + "Socket: " + socketConnectionHashMap.get(key).getOtherClient().getPort());
                 }
             }
+
+            else if(m_AUTO_REQUEST.find()){
+                sendAutoRequest();
+            }
+
             return 1;
         }
 
@@ -126,6 +137,7 @@ public class Client {
                 }
                 socketConnectionList.add(socketConnection);
                 socketConnectionHashMap.put(socketConnection.getRemote_id(),socketConnection);
+                clientPermissionRequired.put(socketConnection.getRemote_id(),true);
             }
         }
         catch (Exception e){
@@ -141,43 +153,105 @@ public class Client {
         }
     }
 
+    public void sendAutoRequest(){
+        /*ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
+        exec.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("Auto");
+            }
+        }, 0, 10, TimeUnit.SECONDS);*/
+
+
+        Thread sendAuto = new Thread(){
+            public void run(){
+                try {
+                    while(true) {
+                        System.out.println("Auto - Generating request");
+                        sendRequest();
+                        Thread.sleep(7000);
+                    }
+                }
+                catch (Exception e){}
+            }
+        };
+        sendAuto.setDaemon(true); 	// terminate when main ends
+        sendAuto.start();
+        }
+
+
 
     public void processRequest(String RequestingClientId, Integer RequestingClientLogicalClock){
         System.out.println("Inside Process Request for request Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
-        SocketConnection requestingSocketConnection = socketConnectionHashMap.get(RequestingClientId);
-        requestingSocketConnection.reply();
+        this.highestLogicalClockValue = Math.max(this.highestLogicalClockValue, RequestingClientLogicalClock);
+        if(( (this.usingCS || this.requestedCS) && RequestingClientLogicalClock > this.logicalClock) || (RequestingClientLogicalClock == this.logicalClock && Integer.valueOf(RequestingClientId) > Integer.valueOf(this.getId()))){
+            System.out.println("Deferred Reply for request Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
+            this.clientPermissionRequired.replace(RequestingClientId,true);
+            this.deferredReplyList.add(RequestingClientId);
+        }
+        else {
+            System.out.println("Initiating SEND REPLY without block");
+            SocketConnection requestingSocketConnection = socketConnectionHashMap.get(RequestingClientId);
+            requestingSocketConnection.reply();
+        }
 
     }
 
     public void processReply(String ReplyingClientId){
         System.out.println("Inside Process Reply for replying Client:  "+ ReplyingClientId);
+        this.clientPermissionRequired.replace(ReplyingClientId,false);
         this.outStandingReplyCount = this.outStandingReplyCount -1;
         if(this.outStandingReplyCount == 0 ){
             enterCriticalSection();
         }
-        this.requestingCS = false;
+        releaseCSCleanUp();
     }
 
     public void sendRequest(){
-        this.requestingCS = true;
-        this.outStandingReplyCount = 3;
-        System.out.println("Sending Request");
-        Integer i;
-        for (i=0; i < this.socketConnectionList.size(); i++){
-            socketConnectionList.get(i).request(logicalClock);
+        if(!(this.requestedCS || this.usingCS)) {
+            this.requestedCS = true;
+            this.logicalClock = this.highestLogicalClockValue + 1;
+            System.out.println("Sending Request");
+            Integer i;
+            for (i = 0; i < this.socketConnectionList.size(); i++) {
+                if (clientPermissionRequired.get(socketConnectionList.get(i).getRemote_id()) == true) {
+                    this.outStandingReplyCount = this.outStandingReplyCount + 1;
+                    socketConnectionList.get(i).request(logicalClock);
+                }
+            }
+
+            if(this.outStandingReplyCount == 0){
+                enterCriticalSection();
+                releaseCSCleanUp();
+            }
+        }
+        else{
+            System.out.println("Currently in CS or already requested for CS");
         }
     }
 
     public void enterCriticalSection(){
         System.out.println("Entering critical section READ/WRITE TO SEVER");
+        this.usingCS = true;
+        this.requestedCS = false;
         try {
             System.out.println("System currently mocks CS execution by sleep - Started");
-            TimeUnit.SECONDS.sleep(10);
+            TimeUnit.SECONDS.sleep(3);
             System.out.println("System currently mocks CS execution by sleep - Completed");
         }
         catch (Exception e){
 
         }
+    }
+
+    public void releaseCSCleanUp(){
+        this.usingCS = false;
+        this.requestedCS = false;
+        Iterator<String> deferredReplyClientId = deferredReplyList.iterator();
+        while(deferredReplyClientId.hasNext()){
+            socketConnectionHashMap.get(deferredReplyClientId.next()).reply();
+        }
+        deferredReplyList.clear();
     }
 
 
@@ -210,6 +284,7 @@ public class Client {
                         SocketConnection socketConnection = new SocketConnection(s,Id,false, current);
                         socketConnectionList.add(socketConnection);
                         socketConnectionHashMap.put(socketConnection.getRemote_id(),socketConnection);
+                        clientPermissionRequired.put(socketConnection.getRemote_id(),true);
                     }
                     catch(IOException e){ e.printStackTrace(); }
                 }

@@ -27,7 +27,7 @@ public class Client {
     Boolean usingCS = false;
     List<String> deferredReplyList = new LinkedList<>();
     String requestedCSForFile;
-    Integer minimumDelay = 5000;
+    Integer minimumDelay = 2000;
     String availableFileList = "abc";
 
     public Client(String id) {
@@ -211,7 +211,7 @@ public class Client {
                 this.deferredReplyList.add(RequestingClientId);
             } else {
 
-                System.out.println("Initiating SEND REPLY without block as defer condition is not met");
+                System.out.println("Initiating SEND REPLY without block as defer condition is not met for the same file " + this.requestedCSForFile + fileName);
                 this.clientPermissionRequired.replace(RequestingClientId, true);
                 SocketConnection requestingSocketConnection = socketConnectionHashMap.get(RequestingClientId);
                 requestingSocketConnection.reply(fileName);
@@ -230,13 +230,17 @@ public class Client {
     }
 
     public synchronized void processReply(String ReplyingClientId, String fileName){
-
-        System.out.println("Inside Process Reply for replying Client:  "+ ReplyingClientId);
-        this.clientPermissionRequired.replace(ReplyingClientId,false);
-        this.outStandingReplyCount = this.outStandingReplyCount -1;
-        if(this.outStandingReplyCount == 0 ){
-            enterCriticalSection(fileName);
-            releaseCSCleanUp();
+        if(fileName.equals(this.requestedCSForFile)) {
+            System.out.println("Inside Process Reply for replying Client:  " + ReplyingClientId +" for the file " + fileName);
+            this.clientPermissionRequired.replace(ReplyingClientId, false);
+            this.outStandingReplyCount = this.outStandingReplyCount - 1;
+            if (this.outStandingReplyCount == 0) {
+                enterCriticalSection(fileName);
+                releaseCSCleanUp();
+            }
+        }
+        else {
+            System.out.println("Inside Process Reply for replying Client:  " + ReplyingClientId +" for the file " + fileName + "### NO ACTION TAKEN");
         }
     }
 
@@ -269,20 +273,20 @@ public class Client {
         this.usingCS = true;
         this.requestedCS = false;
         try {
-            System.out.println("================================================= ENTERING CRITICAL SECTION =====================================================================================");
+            System.out.println("================= ENTERING CRITICAL SECTION ===================");
             System.out.println("Writing Client Id of requesting node with ID: "+ this.getId() +" to file " + fileName + " and logical clock with value"+ this.logicalClock +" in critical section");
             Server server = new Server();
             server.writeToFile(fileName, new Message(this.Id,Integer.toString(this.logicalClock)));
-            TimeUnit.SECONDS.sleep(10);
-            System.out.println("=============================================== EXCITING CRITICAL SECTION ========================================================================================");
+            TimeUnit.SECONDS.sleep(4);
+            System.out.println("========================= EXCITING CRITICAL SECTION ============");
         }
         catch (Exception e){
-
+            System.out.println("File write error");
         }
     }
 
     public void releaseCSCleanUp(){
-        System.out.println("------------------------------------------ENTERING CLEAN UP: SEND DEFERRED REPLY AND FLAG RESET ---------------------------------------------------------");
+        System.out.println("----------ENTERING CLEAN UP: SEND DEFERRED REPLY AND FLAG RESET --------------------------------");
         this.usingCS = false;
         this.requestedCS = false;
         Iterator<String> deferredReplyClientId = deferredReplyList.iterator();
@@ -291,7 +295,7 @@ public class Client {
         }
         this.requestedCSForFile = "";
         deferredReplyList.clear();
-        System.out.println(" ----------------------------------------- EXITING CLEAN UP --------------------------------------------------------------------------------------------");
+        System.out.println(" ----------------- EXITING CLEAN UP -----------------------------");
     }
 
 

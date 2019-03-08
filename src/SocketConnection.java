@@ -69,15 +69,17 @@ public class SocketConnection {
             else if(cmd_in.equals("REQ")){
                 String RequestingClientId = cmd.readLine();
                 Integer RequestingClientLogicalClock = Integer.valueOf(cmd.readLine());
+                String FileName = cmd.readLine();
                 System.out.println("Received Request from Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
                 System.out.println("Calling Client: " + this.my_id +"'s request processor");
-                my_master.processRequest(RequestingClientId, RequestingClientLogicalClock );
+                my_master.processRequest(RequestingClientId, RequestingClientLogicalClock,FileName );
             }
 
             else if(cmd_in.equals("REP")){
                 String ReplyingClientId = cmd.readLine();
+                String FileName = cmd.readLine();
                 System.out.println("Received Reply from Client: " + ReplyingClientId);
-                my_master.processReply(ReplyingClientId);
+                my_master.processReply(ReplyingClientId,FileName);
             }
         }
         catch (Exception e){}
@@ -85,22 +87,24 @@ public class SocketConnection {
     }
 
 
-    public void publish() {
+    public synchronized void publish() {
         out.println("P");
     }
 
 
-    public void request(Integer logicalClock){
-        System.out.println("SENDING REQ FROM CLIENT WITH CLIENT ID" + this.my_id);
+    public synchronized void request(Integer logicalClock, String fileName ){
+        System.out.println("SENDING REQ FROM CLIENT WITH CLIENT ID: " + this.my_id +" to remote CLIENT ID: " + this.getRemote_id() + " for file: "+ fileName);
         out.println("REQ");
         out.println(this.my_id);
         out.println(logicalClock);
+        out.println(fileName);
     }
 
-    public void reply(){
-        System.out.println("SENDING REP FROM CLIENT" + this.my_id +" TO CLIENT ID" + this.getRemote_id());
+    public synchronized void reply(String fileName){
+        System.out.println("SENDING REP FROM CLIENT" + this.my_id +" TO remote CLIENT ID" + this.getRemote_id() + " for file: "+ fileName);
         out.println("REP");
         out.println(this.my_id);
+        out.println(fileName);
     }
 
     public Socket getOtherClient() {

@@ -26,8 +26,9 @@ public class Client {
     Boolean requestedCS = false;
     Boolean usingCS = false;
     List<String> deferredReplyList = new LinkedList<>();
-    String RequestedFile;
+    String requestedCSForFile;
     Integer minimumDelay = 5000;
+    String availableFileList = "abc";
 
     public Client(String id) {
         this.Id = id;
@@ -92,12 +93,14 @@ public class Client {
             }
 
             else if(m_START.find()){
+                System.out.println("Socket connection test function");
                 sendP();
 
             }
 
             else if(m_REQUEST.find()){
-                sendRequest();
+                System.out.println("Initiating REQUEST for file :A: critical section");
+                sendRequest("a");
             }
 
             else if(m_CONNECTION_DETAIL.find()){
@@ -162,7 +165,10 @@ public class Client {
                 try {
                     while(true) {
                         System.out.println("Auto - Generating request");
-                        sendRequest();
+                        Random r = new Random();
+                        char file = availableFileList.charAt(r.nextInt(availableFileList.length()));
+                        String fileName = file +".txt";
+                        sendRequest(fileName);
                         double randFraction = Math.random() * 1000;
                         Integer delay = (int) Math.floor(randFraction) + minimumDelay;
                         System.out.println("The AUTO REQUEST THREAD thread will sleep for " + delay +" seconds");
@@ -178,66 +184,78 @@ public class Client {
 
 
 
-    public synchronized void processRequest(String RequestingClientId, Integer RequestingClientLogicalClock){
-        System.out.println("Inside Process Request for request Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
-        this.highestLogicalClockValue = Math.max(this.highestLogicalClockValue, RequestingClientLogicalClock);
-        if (this.usingCS || this.requestedCS){
-            if(RequestingClientLogicalClock > this.logicalClock){
-                System.out.println("USING OR REUQESTED CS");
-                System.out.println("Highest Logical Clock Value: " +  this.highestLogicalClockValue);
-                System.out.println("Current Logical Clock Value:" + this.logicalClock);
-                System.out.println("************** SHOULD DEFER *********** CONDITION 1*****************");
-            }
-            else if(RequestingClientLogicalClock == this.logicalClock){
-                System.out.println("USING OR REUQESTED CS");
-                System.out.println("Highest Logical Clock Value: " +  this.highestLogicalClockValue);
-                System.out.println("Current Logical Clock Value:" + this.logicalClock);
-                System.out.println("************** SHOULD DEFER *********** CONDITION 2*****************");
-            }
+    public synchronized void processRequest(String RequestingClientId, Integer RequestingClientLogicalClock, String fileName){
+        if( fileName.equals(this.requestedCSForFile)) {
+            System.out.println("Inside Process Request for request Client: " + RequestingClientId + " which had logical clock value of: " + RequestingClientLogicalClock);
+            this.highestLogicalClockValue = Math.max(this.highestLogicalClockValue, RequestingClientLogicalClock);
+            if (this.usingCS || this.requestedCS) {
+                if (RequestingClientLogicalClock > this.logicalClock) {
+                    System.out.println("USING OR REQUESTED CS");
+                    System.out.println("Highest Logical Clock Value: " + this.highestLogicalClockValue);
+                    System.out.println("Current Logical Clock Value:" + this.logicalClock);
+                    System.out.println("************** SHOULD DEFER *********** CONDITION 1 *****************");
+                } else if (RequestingClientLogicalClock == this.logicalClock) {
+                    System.out.println("USING OR REQUESTED CS");
+                    System.out.println("Highest Logical Clock Value: " + this.highestLogicalClockValue);
+                    System.out.println("Current Logical Clock Value:" + this.logicalClock);
+                    System.out.println("************** SHOULD DEFER *********** CONDITION 2 *****************");
+                }
 
-        }
-        if(( (this.usingCS || this.requestedCS) && (RequestingClientLogicalClock > this.logicalClock)) || ((this.usingCS || this.requestedCS) && RequestingClientLogicalClock == this.logicalClock && Integer.valueOf(RequestingClientId) > Integer.valueOf(this.getId()))){
-            System.out.println("____________________________________________________________________________________________________");
-            System.out.println("Deferred Reply for request Client: " + RequestingClientId + " which had logical clock value of: "+ RequestingClientLogicalClock);
-            System.out.println("Critical Section Access from this node had CLIENT ID" + this.getId() +"and last updated logical clock is: " + this.logicalClock );
-            System.out.println("_____________________________________________________________________________________________________");
-            this.clientPermissionRequired.replace(RequestingClientId,true);
-            this.deferredReplyList.add(RequestingClientId);
+            }
+            if (((this.usingCS || this.requestedCS) && (RequestingClientLogicalClock > this.logicalClock)) || ((this.usingCS || this.requestedCS) && RequestingClientLogicalClock == this.logicalClock && Integer.valueOf(RequestingClientId) > Integer.valueOf(this.getId()))) {
+                System.out.println("_____________________________________________________________________________________________________");
+                System.out.println("Deferred Reply for request Client: " + RequestingClientId + " which had logical clock value of: " + RequestingClientLogicalClock);
+                System.out.println("Critical Section Access from this node had CLIENT ID" + this.getId() + "and last updated logical clock is: " + this.logicalClock);
+                System.out.println("_____________________________________________________________________________________________________");
+                this.clientPermissionRequired.replace(RequestingClientId, true);
+                this.deferredReplyList.add(RequestingClientId);
+            } else {
+
+                System.out.println("Initiating SEND REPLY without block as defer condition is not met");
+                this.clientPermissionRequired.replace(RequestingClientId, true);
+                SocketConnection requestingSocketConnection = socketConnectionHashMap.get(RequestingClientId);
+                requestingSocketConnection.reply(fileName);
+            }
         }
         else {
+
+            System.out.println("Inside Process Request for ** DIFFERENT FILE ** request Client: " + RequestingClientId + " which had logical clock value of: " + RequestingClientLogicalClock);
+            this.highestLogicalClockValue = Math.max(this.highestLogicalClockValue, RequestingClientLogicalClock);
             System.out.println("Initiating SEND REPLY without block");
-            this.clientPermissionRequired.replace(RequestingClientId,true);
+            this.clientPermissionRequired.replace(RequestingClientId, true);
             SocketConnection requestingSocketConnection = socketConnectionHashMap.get(RequestingClientId);
-            requestingSocketConnection.reply();
+            requestingSocketConnection.reply(fileName);
         }
 
     }
 
-    public synchronized void processReply(String ReplyingClientId){
+    public synchronized void processReply(String ReplyingClientId, String fileName){
+
         System.out.println("Inside Process Reply for replying Client:  "+ ReplyingClientId);
         this.clientPermissionRequired.replace(ReplyingClientId,false);
         this.outStandingReplyCount = this.outStandingReplyCount -1;
         if(this.outStandingReplyCount == 0 ){
-            enterCriticalSection();
+            enterCriticalSection(fileName);
             releaseCSCleanUp();
         }
     }
 
-    public synchronized void sendRequest(){
+    public synchronized void sendRequest(String fileName){
         if(!(this.requestedCS || this.usingCS)) {
             this.requestedCS = true;
+            this.requestedCSForFile = fileName;
             this.logicalClock = this.highestLogicalClockValue + 1;
-            System.out.println("Sending Request with logical clock: " + this.logicalClock);
+            System.out.println("Sending Request with logical clock: " + this.logicalClock +" requesting CS access for file " + this.requestedCSForFile);
             Integer i;
             for (i = 0; i < this.socketConnectionList.size(); i++) {
                 if (clientPermissionRequired.get(socketConnectionList.get(i).getRemote_id()) == true) {
                     this.outStandingReplyCount = this.outStandingReplyCount + 1;
-                    socketConnectionList.get(i).request(logicalClock);
+                    socketConnectionList.get(i).request(this.logicalClock, this.requestedCSForFile);
                 }
             }
 
             if(this.outStandingReplyCount == 0){
-                enterCriticalSection();
+                enterCriticalSection(fileName);
                 releaseCSCleanUp();
             }
         }
@@ -246,16 +264,17 @@ public class Client {
         }
     }
 
-    public void enterCriticalSection(){
+    public void enterCriticalSection(String fileName){
         System.out.println("Entering critical section READ/WRITE TO SERVER");
         this.usingCS = true;
         this.requestedCS = false;
         try {
-            System.out.println("Writing Client Id of requesting node to file and logical clock in critical section");
+            System.out.println("================================================= ENTERING CRITICAL SECTION =====================================================================================");
+            System.out.println("Writing Client Id of requesting node with ID: "+ this.getId() +" to file " + fileName + " and logical clock with value"+ this.logicalClock +" in critical section");
             Server server = new Server();
-            server.writeToFile("asr150330_1.txt", new Message(this.Id,Integer.toString(this.logicalClock)));
+            server.writeToFile(fileName, new Message(this.Id,Integer.toString(this.logicalClock)));
             TimeUnit.SECONDS.sleep(10);
-            System.out.println("Exciting Critical Section");
+            System.out.println("=============================================== EXCITING CRITICAL SECTION ========================================================================================");
         }
         catch (Exception e){
 
@@ -263,15 +282,16 @@ public class Client {
     }
 
     public void releaseCSCleanUp(){
-        System.out.println("Entering Clean UP");
+        System.out.println("------------------------------------------ENTERING CLEAN UP: SEND DEFERRED REPLY AND FLAG RESET ---------------------------------------------------------");
         this.usingCS = false;
         this.requestedCS = false;
         Iterator<String> deferredReplyClientId = deferredReplyList.iterator();
         while(deferredReplyClientId.hasNext()){
-            socketConnectionHashMap.get(deferredReplyClientId.next()).reply();
+            socketConnectionHashMap.get(deferredReplyClientId.next()).reply(this.requestedCSForFile);
         }
+        this.requestedCSForFile = "";
         deferredReplyList.clear();
-        System.out.println("Exiting Clean UP");
+        System.out.println(" ----------------------------------------- EXITING CLEAN UP --------------------------------------------------------------------------------------------");
     }
 
 

@@ -18,8 +18,10 @@ public class Client {
     List<Node> allServerNodes = new LinkedList<>();
     Integer logicalClock = 0;
     List<SocketConnection> socketConnectionList = new LinkedList<>();
+    List<SocketConnection> socketConnectionListServer = new LinkedList<>();
     ServerSocket server;
     HashMap<String,SocketConnection> socketConnectionHashMap = new HashMap<>();
+    HashMap<String,SocketConnection> socketConnectionHashMapServer = new HashMap<>();
     HashMap<String,Boolean> clientPermissionRequired = new HashMap<>();
     Integer highestLogicalClockValue = 0;
     Integer outStandingReplyCount = 0;
@@ -75,6 +77,8 @@ public class Client {
         }
 
         Pattern SETUP = Pattern.compile("^SETUP$");
+        Pattern SERVER_SETUP = Pattern.compile("^SERVER_SETUP$");
+        Pattern SERVER_SETUP_TEST = Pattern.compile("^SERVER_SETUP_TEST$");
         Pattern START = Pattern.compile("^START$");
         Pattern CONNECTION_DETAIL = Pattern.compile("^CONNECTION_DETAIL$");
         Pattern REQUEST = Pattern.compile("^REQUEST$");
@@ -88,6 +92,8 @@ public class Client {
             Matcher m_CONNECTION_DETAIL = CONNECTION_DETAIL.matcher(cmd_in);
             Matcher m_REQUEST = REQUEST.matcher(cmd_in);
             Matcher m_AUTO_REQUEST = AUTO_REQUEST.matcher(cmd_in);
+            Matcher m_SERVER_SETUP = SERVER_SETUP.matcher(cmd_in);
+            Matcher m_SERVER_SETUP_TEST = SERVER_SETUP_TEST.matcher(cmd_in);
             if(m_SETUP.find()){
                 setupConnections(current);
             }
@@ -120,6 +126,14 @@ public class Client {
                 sendAutoRequest();
             }
 
+            else if (m_SERVER_SETUP.find()){
+                setupServerConnection(current);
+            }
+
+            else if(m_SERVER_SETUP_TEST.find()){
+                sendTestWrite();
+            }
+
             return 1;
         }
 
@@ -130,12 +144,20 @@ public class Client {
         }
     }
 
+    public void sendTestWrite(){
+        Integer remoteServer;
+        for (remoteServer = 0; remoteServer < this.socketConnectionListServer.size(); remoteServer++){
+            socketConnectionListServer.get(remoteServer).write();
+        }
+
+    }
+
     public void setupConnections(Client current){
         try {
             System.out.println("CONNECTING CLIENTS");
             Integer clientId;
             for(clientId = Integer.valueOf(this.Id) + 1; clientId < allClientNodes.size(); clientId ++ ) {
-                Socket clientConnection = new Socket("10.122.168.54", Integer.valueOf(allClientNodes.get(clientId).getPort()));
+                Socket clientConnection = new Socket("localhost", Integer.valueOf(allClientNodes.get(clientId).getPort()));
                 SocketConnection socketConnection = new SocketConnection(clientConnection, this.getId(), true,current);
                 if(socketConnection.getRemote_id() == null){
                     socketConnection.setRemote_id(Integer.toString(clientId));
@@ -148,6 +170,26 @@ public class Client {
         catch (Exception e){
 
         }
+    }
+
+    public void setupServerConnection(Client current){
+        try{
+            System.out.println("CONNECTING SERVER");
+            Integer serverId;
+            for (serverId =0; serverId < allServerNodes.size(); serverId ++){
+                Socket serverConnection = new Socket("localhost", Integer.valueOf(this.allServerNodes.get(serverId).getPort()));
+                SocketConnection socketConnectionServer = new SocketConnection(serverConnection,this.getId(),true,current);
+                if(socketConnectionServer.getRemote_id() == null){
+                    socketConnectionServer.setRemote_id(Integer.toString(serverId));
+                }
+                socketConnectionListServer.add(socketConnectionServer);
+                socketConnectionHashMapServer.put(socketConnectionServer.getRemote_id(),socketConnectionServer);
+            }
+        }
+        catch (Exception e){
+            System.out.println("Setup Server Connection Failure");
+        }
+
     }
 
     public void sendP(){
@@ -400,15 +442,18 @@ public class Client {
 
         if (args.length != 1)
         {
-            System.out.println("Usage: java Client <port-number>");
+            System.out.println("Usage: java Client <client-number>");
             System.exit(1);
         }
+
+
+        System.out.println("Starting the Client");
 
         Client C1 = new Client(args[0]);
         C1.setClientList();
         C1.setServerList();
         C1.clientSocket(Integer.valueOf(args[0]),C1);
 
-        System.out.println("Starting Client with ID: " + C1.getId());
+        System.out.println("Started Client with ID: " + C1.getId());
     }
 }

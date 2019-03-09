@@ -66,6 +66,10 @@ public class SocketConnection {
             else if(cmd_in.equals("SEND_ID")){
                 out.println(this.my_id);
             }
+
+            else if(cmd_in.equals("SEND_CLIENT_ID")){
+                out.println(this.my_id);
+            }
             else if(cmd_in.equals("REQ")){
                 String RequestingClientId = cmd.readLine();
                 Integer RequestingClientLogicalClock = Integer.valueOf(cmd.readLine());
@@ -89,6 +93,18 @@ public class SocketConnection {
 
     public synchronized void publish() {
         out.println("P");
+    }
+
+
+    public synchronized  void serverWriteTest() {
+        out.println("WRITE_TEST");
+    }
+
+    public synchronized void write(String fileName, Message message){
+        System.out.println("Sending write request from Client ID: " + this.my_id +" to server with SERVER ID: " + this.getRemote_id());
+        out.println("WRITE");
+        out.println(message.clientId);
+        out.println(message.timeStamp);
     }
 
 

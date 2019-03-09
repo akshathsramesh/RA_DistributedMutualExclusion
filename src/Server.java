@@ -1,30 +1,74 @@
 import java.io.*;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Server {
 
-    List<String> hostedFiles = new LinkedList<>();
-    List<String> filesInWrite = new LinkedList<>();
-    List<String> filesInRead = new LinkedList<>();
-    Queue<WriteRequest> writeRequestQueue = new LinkedList<>();
+    List<Node> allServerNodes = new LinkedList<>();
+    List<ServerSocketConnection> serverSocketConnectionList = new LinkedList<>();
+    ServerSocket server;
+    String Id;
+    HashMap<String,ServerSocketConnection> serverSocketConnectionHashMap = new HashMap<>();
 
-
-    public List<String> getHostedFiles() {
-        return hostedFiles;
+    public String getId() {
+        return Id;
     }
 
-    public void setHostedFiles(List<String> hostedFiles) {
-        this.hostedFiles = hostedFiles;
+    public void setId(String id) {
+        Id = id;
     }
+
+    public List<Node> getAllServerNodes() {
+        return allServerNodes;
+    }
+
+    public void setAllServerNodes(List<Node> allServerNodes) {
+        this.allServerNodes = allServerNodes;
+    }
+
+    public class CommandParser extends Thread{
+
+        Server currentServer;
+
+        public CommandParser(Server currentServer){
+            this.currentServer = currentServer;
+        }
+
+        Pattern START = Pattern.compile("^START$");
+
+        int rx_cmd(Scanner cmd){
+            String cmd_in = null;
+            if (cmd.hasNext())
+                cmd_in = cmd.nextLine();
+            Matcher m_START = START.matcher(cmd_in);
+
+            if(m_START.find()){
+                System.out.println("Socket connection test function");
+//                sendP();
+
+            }
+
+            return 1;
+        }
+
+        public void run() {
+            System.out.println("Enter commands to set-up MESH Connection : START");
+            Scanner input = new Scanner(System.in);
+            while(rx_cmd(input) != 0) { }
+        }
+    }
+
 
     public void writeToFile( String fileName, Message message) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true));
         writer.append(message.getClientId()+","+message.getTimeStamp()+"\n");
         writer.close();
     }
+
 
 
     public Message readLastFile(String fileName) {
@@ -50,22 +94,24 @@ public class Server {
 
 
 
-    public void setFiles(){
+    public void setServerList(){
         try {
-            BufferedReader br = new BufferedReader(new FileReader("hostedFiles.txt"));
+            BufferedReader br = new BufferedReader(new FileReader("ServerAddressAndPorts.txt"));
             try {
                 StringBuilder sb = new StringBuilder();
                 String line = br.readLine();
 
                 while (line != null) {
                     sb.append(line);
-                    this.hostedFiles.add(line);
+                    List<String> parsed_server = Arrays.asList(line.split(","));
+                    Node n_server = new Node(parsed_server.get(0),parsed_server.get(1),parsed_server.get(2));
+                    this.getAllServerNodes().add(n_server);
                     sb.append(System.lineSeparator());
                     line = br.readLine();
                 }
                 String everything = sb.toString();
                 System.out.println(everything);
-                System.out.println(this.getHostedFiles().size());
+                System.out.println(this.getAllServerNodes().size());
 
             } finally {
                 br.close();
@@ -75,24 +121,63 @@ public class Server {
         }
     }
 
+    public void serverSocket(Integer serverId, Server currentServer){
+        try
+        {
+            server = new ServerSocket(Integer.valueOf(this.allServerNodes.get(serverId).port));
+            Id = Integer.toString(serverId);
+            System.out.println("Server node running on port " + Integer.valueOf(this.allServerNodes.get(serverId).port) +"," + " use ctrl-C to end");
+            InetAddress myServerIp = InetAddress.getLocalHost();
+            String ip = myServerIp.getHostAddress();
+            String hostname = myServerIp.getHostName();
+            System.out.println("Your current Server IP address : " + ip);
+            System.out.println("Your current Server Hostname : " + hostname);
+        }
+        catch (IOException e)
+        {
+            System.out.println("Error creating socket");
+            System.exit(-1);
+        }
+
+        Server.CommandParser cmdpsr = new Server.CommandParser(currentServer);
+        cmdpsr.start();
+
+        Thread current_node = new Thread() {
+            public void run(){
+                while(true){
+                    try{
+                        Socket s = server.accept();
+                        ServerSocketConnection serverSocketConnection = new ServerSocketConnection(s,Id, false,currentServer);
+                        serverSocketConnectionList.add(serverSocketConnection);
+                        serverSocketConnectionHashMap.put(serverSocketConnection.getRemote_id(),serverSocketConnection);
+                    }
+                    catch(IOException e){ e.printStackTrace(); }
+                }
+            }
+        };
+
+        current_node.setDaemon(true);
+        current_node.start();
+    }
+
 
 
     public static void main(String[] args) {
-        System.out.println("Starting the server");
-        Server s = new Server();
-        s.setFiles();
-        System.out.println(s.getHostedFiles());
-        Message m1 = new Message("1","120");
-        Message m2 = new Message("1","122");
-        Message m3 = new Message("1","123");
-        try {
-            s.writeToFile("asr150330_1.txt", m1);
-            s.writeToFile("asr150330_1.txt", m2);
-            s.writeToFile("asr150330_1.txt", m3);
-            Message ret = s.readLastFile("asr150330_1.txt");
-        }
-        catch (Exception e){}
+
+
+        if (args.length != 1) {
+            System.out.println("Usage: java Server <server-number>");
+            System.exit(1);
         }
 
+        System.out.println("Starting the server");
+
+        Server server = new Server();
+        server.setServerList();
+        server.serverSocket(Integer.valueOf(args[0]),server);
+
+        System.out.println("Started Client with ID: " + server.getId());
+
     }
+}
 

@@ -94,6 +94,15 @@ public class ServerSocketConnection {
 
     }
 
+
+    public synchronized void sendWriteAcknowledge(String fileName){
+        out.println("WRITE_TO_FILE_ACK");
+        out.println(fileName);
+    }
+
+
+
+
     public Socket getOtherClient() {
         return otherClient;
     }

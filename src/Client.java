@@ -33,6 +33,8 @@ public class Client {
     String availableFileList = "abc";
     Boolean criticalSectionReadOrWriteComplete = true;
     String fileProcessOption = "RW";
+    Integer noOfServer = 0;
+    Integer writeAckCount = 0;
 
     public Client(String id) {
         this.Id = id;
@@ -187,6 +189,8 @@ public class Client {
                 socketConnectionListServer.add(socketConnectionServer);
                 socketConnectionHashMapServer.put(socketConnectionServer.getRemote_id(),socketConnectionServer);
             }
+
+            this.noOfServer = socketConnectionListServer.size();
         }
         catch (Exception e){
             System.out.println("Setup Server Connection Failure");
@@ -207,7 +211,15 @@ public class Client {
         System.out.println("CRITICAL SECTION READ - COMPLETED");
         System.out.println("LAST MESSAGE ON FILE " + fileNameRead + " HAD CLIENT ID: " +lastMessage.getClientId() +" AND TIMESTAMP: " + lastMessage.getTimeStamp());
         this.criticalSectionReadOrWriteComplete = true;
+    }
 
+    public synchronized void processWriteAck(String fileName){
+        if(fileName.equals(this.requestedCSForFile)){
+            this.writeAckCount = this.writeAckCount -1;
+            if(this.writeAckCount == 0 ){
+                this.criticalSectionReadOrWriteComplete = true;
+            }
+        }
     }
 
     public void sendAutoRequest(){
@@ -280,6 +292,7 @@ public class Client {
         }
 
     }
+
 
     public synchronized void processReply(String ReplyingClientId, String fileName){
         if(fileName.equals(this.requestedCSForFile)) {

@@ -63,7 +63,8 @@ public class Server {
     }
 
 
-    public void writeToFile( String fileName, Message message) throws IOException {
+
+    public  synchronized void writeToFile( String fileName, Message message) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true));
         writer.append(message.getClientId()+","+message.getTimeStamp()+"\n");
         writer.close();
@@ -71,7 +72,7 @@ public class Server {
 
 
 
-    public Message readLastFile(String fileName) {
+    public synchronized void readLastFile(String fileName, String requestingClientId) {
         String sCurrentLine;
         String lastLine= "";
         try {
@@ -87,9 +88,12 @@ public class Server {
 
         }
         List<String> message = Arrays.asList(lastLine.split(","));
-        System.out.println(message.get(1)+"Value of last line");
+        System.out.println(message.get(1)+" Value of last line");
         Message returnMessage = new Message(message.get(0),message.get(1));
-        return returnMessage;
+
+        ServerSocketConnection serverSocketConnection =  serverSocketConnectionHashMap.get(requestingClientId);
+        serverSocketConnection.sendLastMessageOnFile(fileName,returnMessage);
+
     }
 
 

@@ -31,6 +31,8 @@ public class Client {
     String requestedCSForFile;
     Integer minimumDelay = 2000;
     String availableFileList = "abc";
+    Boolean criticalSectionReadOrWriteComplete = true;
+    String fileProcessOption = "RW";
 
     public Client(String id) {
         this.Id = id;
@@ -147,7 +149,7 @@ public class Client {
     public void sendTestWrite(){
         Integer remoteServer;
         for (remoteServer = 0; remoteServer < this.socketConnectionListServer.size(); remoteServer++){
-            socketConnectionListServer.get(remoteServer).write();
+            socketConnectionListServer.get(remoteServer).serverWriteTest();
         }
 
     }
@@ -198,6 +200,14 @@ public class Client {
         for (i=0; i < this.socketConnectionList.size(); i++){
             socketConnectionList.get(i).publish();
         }
+    }
+
+    public synchronized void fileReadAcknowledgeProcessor(String respondingServerId, String fileNameRead, Message lastMessage ){
+        System.out.println("Processing read from file request acknowledge");
+        System.out.println("CRITICAL SECTION READ - COMPLETED");
+        System.out.println("LAST MESSAGE ON FILE " + fileNameRead + " HAD CLIENT ID: " +lastMessage.getClientId() +" AND TIMESTAMP: " + lastMessage.getTimeStamp());
+        this.criticalSectionReadOrWriteComplete = true;
+
     }
 
     public void sendAutoRequest(){
@@ -314,6 +324,8 @@ public class Client {
         System.out.println("Entering critical section READ/WRITE TO SERVER");
         this.usingCS = true;
         this.requestedCS = false;
+        this.criticalSectionReadOrWriteComplete = false;
+//        add random option
         try {
             System.out.println("================= ENTERING CRITICAL SECTION ===================");
             System.out.println("Writing Client Id of requesting node with ID: "+ this.getId() +" to file " + fileName + " and logical clock with value"+ this.logicalClock +" in critical section");
@@ -328,6 +340,9 @@ public class Client {
     }
 
     public void releaseCSCleanUp(){
+
+
+        while(!this.criticalSectionReadOrWriteComplete){}
         System.out.println("----------ENTERING CLEAN UP: SEND DEFERRED REPLY AND FLAG RESET --------------------------------");
         this.usingCS = false;
         this.requestedCS = false;

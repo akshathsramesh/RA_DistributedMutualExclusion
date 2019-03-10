@@ -94,6 +94,13 @@ public class SocketConnection {
                 my_master.fileReadAcknowledgeProcessor(respondingServerId,fileNameRead,new Message(lastMessageClient,lastMessageTimeStamp));
 
             }
+
+
+            else if(cmd_in.equals("WRITE_TO_FILE_ACK")){
+                System.out.println("Received write ACK");
+                String fileName = cmd.readLine();
+                my_master.processWriteAck(fileName);
+            }
         }
         catch (Exception e){}
         return 1;

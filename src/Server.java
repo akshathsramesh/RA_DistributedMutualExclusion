@@ -13,6 +13,7 @@ public class Server {
     ServerSocket server;
     String Id;
     HashMap<String,ServerSocketConnection> serverSocketConnectionHashMap = new HashMap<>();
+    HashMap<String, String> serverAndWorkFolder = new HashMap<>();
 
     public String getId() {
         return Id;
@@ -48,7 +49,10 @@ public class Server {
 
             if(m_START.find()){
                 System.out.println("Socket connection test function");
-//                sendP();
+                try {
+                    currentServer.writeToFile("a.txt", new Message("hello", "hello"));
+                }
+                catch (Exception e){}
 
             }
 
@@ -65,9 +69,10 @@ public class Server {
 
 
     public  synchronized void writeToFile( String fileName, Message message) throws IOException {
-        BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true));
+        BufferedWriter writer = new BufferedWriter(new FileWriter( "./"+ this.serverAndWorkFolder.get(this.getId())+ "/" +fileName, true));
         writer.append(message.getClientId()+","+message.getTimeStamp()+"\n");
         writer.close();
+        serverSocketConnectionHashMap.get(message.getClientId()).sendWriteAcknowledge(fileName);
     }
 
 
@@ -76,10 +81,9 @@ public class Server {
         String sCurrentLine;
         String lastLine= "";
         try {
-            BufferedReader br = new BufferedReader(new FileReader(fileName));
+            BufferedReader br = new BufferedReader(new FileReader("./"+ this.serverAndWorkFolder.get(this.getId())+ "/" +fileName));
             while ((sCurrentLine = br.readLine()) != null)
             {
-                System.out.println(sCurrentLine);
                 lastLine = sCurrentLine;
             }
 
@@ -87,16 +91,47 @@ public class Server {
         catch (Exception e){
 
         }
-        List<String> message = Arrays.asList(lastLine.split(","));
-        System.out.println(message.get(1)+" Value of last line");
-        Message returnMessage = new Message(message.get(0),message.get(1));
 
+        Message returnMessage;
+        if(!lastLine.isEmpty()) {
+            List<String> message = Arrays.asList(lastLine.split(","));
+            System.out.println(message.get(1) + " Value of last line");
+            returnMessage = new Message(message.get(0), message.get(1));
+        }
+        else {
+            returnMessage = new Message("EMPTY FILE - NO CLIENT ID", "EMPTY FILE - NO TIME STAMP");
+        }
         ServerSocketConnection serverSocketConnection =  serverSocketConnectionHashMap.get(requestingClientId);
         serverSocketConnection.sendLastMessageOnFile(fileName,returnMessage);
 
     }
 
 
+    public void setServerWorkFolder(){
+        try {
+            BufferedReader br = new BufferedReader(new FileReader("serverWorkFolder.txt"));
+            try {
+                StringBuilder sb = new StringBuilder();
+                String line = br.readLine();
+
+                while (line != null) {
+                    sb.append(line);
+                    List<String> parsed_server_workFolder = Arrays.asList(line.split(","));
+                    this.serverAndWorkFolder.put(parsed_server_workFolder.get(0),parsed_server_workFolder.get(1));
+                    sb.append(System.lineSeparator());
+                    line = br.readLine();
+                }
+                String everything = sb.toString();
+                System.out.println(everything);
+                System.out.println(this.getAllServerNodes().size());
+
+            } finally {
+                br.close();
+            }
+        }
+        catch (Exception e) {
+        }
+    }
 
     public void setServerList(){
         try {
@@ -178,6 +213,7 @@ public class Server {
 
         Server server = new Server();
         server.setServerList();
+        server.setServerWorkFolder();
         server.serverSocket(Integer.valueOf(args[0]),server);
 
         System.out.println("Started Client with ID: " + server.getId());

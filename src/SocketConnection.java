@@ -85,6 +85,15 @@ public class SocketConnection {
                 System.out.println("Received Reply from Client: " + ReplyingClientId);
                 my_master.processReply(ReplyingClientId,FileName);
             }
+
+            else if(cmd_in.equals("READ_FROM_FILE_ACK")){
+                String respondingServerId = cmd.readLine();
+                String fileNameRead = cmd.readLine();
+                String lastMessageClient = cmd.readLine();
+                String lastMessageTimeStamp = cmd.readLine();
+                my_master.fileReadAcknowledgeProcessor(respondingServerId,fileNameRead,new Message(lastMessageClient,lastMessageTimeStamp));
+
+            }
         }
         catch (Exception e){}
         return 1;
@@ -102,9 +111,18 @@ public class SocketConnection {
 
     public synchronized void write(String fileName, Message message){
         System.out.println("Sending write request from Client ID: " + this.my_id +" to server with SERVER ID: " + this.getRemote_id());
-        out.println("WRITE");
+        out.println("WRITE_TO_FILE");
+        out.println(fileName);
         out.println(message.clientId);
         out.println(message.timeStamp);
+    }
+
+
+    public synchronized void read(String fileName){
+        System.out.println("Sending read request from Client ID: " + this.my_id +" to server with SERVER ID: " + this.getRemote_id());
+        out.println("READ_FROM_FILE");
+        out.println(fileName);
+        out.println(this.my_id);
     }
 
 

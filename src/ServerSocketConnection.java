@@ -57,9 +57,21 @@ public class ServerSocketConnection {
     public int rx_cmd(BufferedReader cmd,PrintWriter out) {
         try {
             String cmd_in = cmd.readLine();
-            if (cmd_in.equals("WRITE")) {
+            if (cmd_in.equals("WRITE_TEST")) {
+                System.out.println("Test write received from sender");
+            }
 
-                System.out.println("write recieved from sender");
+            else if(cmd_in.equals("WRITE_TO_FILE")){
+                String fileName = cmd.readLine();
+                String requestingClientId = cmd.readLine();
+                String requestingClientTimeStamp = cmd.readLine();
+                my_master.writeToFile(fileName, new Message(requestingClientId,requestingClientTimeStamp));
+            }
+
+            else if( cmd_in.equals("READ_FROM_FILE")){
+                String fileName = cmd.readLine();
+                String requestingClientId = cmd.readLine();
+                my_master.readLastFile(fileName , requestingClientId);
             }
 
         }
@@ -73,6 +85,14 @@ public class ServerSocketConnection {
     }
 
 
+    public synchronized void sendLastMessageOnFile (String fileName, Message lastWrtittenMessage){
+        out.println("READ_FROM_FILE_ACK");
+        out.println(this.my_id);
+        out.println(fileName);
+        out.println(lastWrtittenMessage.getClientId());
+        out.println(lastWrtittenMessage.getTimeStamp());
+
+    }
 
     public Socket getOtherClient() {
         return otherClient;

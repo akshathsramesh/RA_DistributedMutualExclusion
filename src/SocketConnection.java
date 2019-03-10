@@ -97,6 +97,7 @@ public class SocketConnection {
 
 
             else if(cmd_in.equals("WRITE_TO_FILE_ACK")){
+                System.out.println("Received write ACK");
                 String fileName = cmd.readLine();
                 my_master.processWriteAck(fileName);
             }

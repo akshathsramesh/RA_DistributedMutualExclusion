@@ -81,10 +81,9 @@ public class Server {
         String sCurrentLine;
         String lastLine= "";
         try {
-            BufferedReader br = new BufferedReader(new FileReader(fileName));
+            BufferedReader br = new BufferedReader(new FileReader("./"+ this.serverAndWorkFolder.get(this.getId())+ "/" +fileName));
             while ((sCurrentLine = br.readLine()) != null)
             {
-                System.out.println(sCurrentLine);
                 lastLine = sCurrentLine;
             }
 
@@ -92,10 +91,16 @@ public class Server {
         catch (Exception e){
 
         }
-        List<String> message = Arrays.asList(lastLine.split(","));
-        System.out.println(message.get(1)+" Value of last line");
-        Message returnMessage = new Message(message.get(0),message.get(1));
 
+        Message returnMessage;
+        if(!lastLine.isEmpty()) {
+            List<String> message = Arrays.asList(lastLine.split(","));
+            System.out.println(message.get(1) + " Value of last line");
+            returnMessage = new Message(message.get(0), message.get(1));
+        }
+        else {
+            returnMessage = new Message("EMPTY FILE - NO CLIENT ID", "EMPTY FILE - NO TIME STAMP");
+        }
         ServerSocketConnection serverSocketConnection =  serverSocketConnectionHashMap.get(requestingClientId);
         serverSocketConnection.sendLastMessageOnFile(fileName,returnMessage);
 

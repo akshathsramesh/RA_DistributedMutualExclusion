@@ -211,13 +211,18 @@ public class Client {
         System.out.println("CRITICAL SECTION READ - COMPLETED");
         System.out.println("LAST MESSAGE ON FILE " + fileNameRead + " HAD CLIENT ID: " +lastMessage.getClientId() +" AND TIMESTAMP: " + lastMessage.getTimeStamp());
         this.criticalSectionReadOrWriteComplete = true;
+        releaseCSCleanUp();
     }
 
     public synchronized void processWriteAck(String fileName){
+        System.out.println("Inside WRITE_TO_FILE_ACK processor ");
         if(fileName.equals(this.requestedCSForFile)){
             this.writeAckCount = this.writeAckCount -1;
+            System.out.println(this.writeAckCount);
             if(this.writeAckCount == 0 ){
                 this.criticalSectionReadOrWriteComplete = true;
+                System.out.println("WRITE TO FILE COMPLETE");
+                releaseCSCleanUp();
             }
         }
     }
@@ -301,7 +306,7 @@ public class Client {
             this.outStandingReplyCount = this.outStandingReplyCount - 1;
             if (this.outStandingReplyCount == 0) {
                 enterCriticalSection(fileName);
-                releaseCSCleanUp();
+//                releaseCSCleanUp();
             }
         }
         else {
@@ -325,7 +330,7 @@ public class Client {
 
             if(this.outStandingReplyCount == 0){
                 enterCriticalSection(fileName);
-                releaseCSCleanUp();
+//                releaseCSCleanUp();
             }
         }
         else{
@@ -338,13 +343,33 @@ public class Client {
         this.usingCS = true;
         this.requestedCS = false;
         this.criticalSectionReadOrWriteComplete = false;
-//        add random option
+        Random r = new Random();
+        char readOrWrite = fileProcessOption.charAt(r.nextInt(fileProcessOption.length()));
         try {
             System.out.println("================= ENTERING CRITICAL SECTION ===================");
-            System.out.println("Writing Client Id of requesting node with ID: "+ this.getId() +" to file " + fileName + " and logical clock with value"+ this.logicalClock +" in critical section");
-            Server server = new Server();
-            server.writeToFile(fileName, new Message(this.Id,Integer.toString(this.logicalClock)));
-            TimeUnit.SECONDS.sleep(4);
+            if(readOrWrite == 'R'){
+                System.out.println("CRITICAL SECTION READ OPTION");
+                //Choosing random server to read from
+                Integer serverNumber = r.nextInt(this.getAllServerNodes().size());
+                String serverId = Integer.toString(serverNumber);
+                this.criticalSectionReadOrWriteComplete = false;
+                socketConnectionHashMapServer.get(serverId).read(fileName);
+                System.out.println("SERVER; " +serverId + " File: " + fileName + " PROCESS OPTION: READ");
+
+            }
+
+            else if( readOrWrite == 'W'){
+                System.out.println("CRITICAL SECTION WRITE OPTION");
+                this.writeAckCount = this.noOfServer;
+                Integer serverConnectIndex;
+
+                for (serverConnectIndex = 0; serverConnectIndex < this.socketConnectionListServer.size() ; serverConnectIndex ++){
+                    this.socketConnectionListServer.get(serverConnectIndex).write(fileName, new Message(this.getId(), Integer.toString(this.logicalClock)));
+                }
+
+                System.out.println("SERVER; ALL File: " + fileName + " PROCESS OPTION: WRITE");
+
+            }
             System.out.println("========================= EXCITING CRITICAL SECTION ============");
         }
         catch (Exception e){
@@ -354,8 +379,15 @@ public class Client {
 
     public void releaseCSCleanUp(){
 
-
-        while(!this.criticalSectionReadOrWriteComplete){}
+//
+//        while(!(this.criticalSectionReadOrWriteComplete)){
+//            try {
+//                System.out.println("WAITING ON READ OR WRITE ACKNOWLEDGE");
+//                TimeUnit.SECONDS.sleep(1);
+//            }
+//            catch(Exception e){}
+//        }
+        System.out.println("Recieved necessary acknowledgement");
         System.out.println("----------ENTERING CLEAN UP: SEND DEFERRED REPLY AND FLAG RESET --------------------------------");
         this.usingCS = false;
         this.requestedCS = false;

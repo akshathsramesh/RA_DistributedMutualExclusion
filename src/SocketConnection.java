@@ -101,6 +101,13 @@ public class SocketConnection {
                 String fileName = cmd.readLine();
                 my_master.processWriteAck(fileName);
             }
+
+
+            else if( cmd_in.equals("ENQUIRE_ACK")){
+                System.out.println("Enquire acknowledge received");
+                String allFiles = cmd.readLine();
+                my_master.setHostedFiles(allFiles);
+            }
         }
         catch (Exception e){}
         return 1;
@@ -146,6 +153,13 @@ public class SocketConnection {
         out.println("REP");
         out.println(this.my_id);
         out.println(fileName);
+    }
+
+
+    public synchronized  void sendEnquire(){
+        System.out.println("Send Enquire to Server");
+        out.println("ENQUIRE");
+        out.println(this.my_id);
     }
 
     public Socket getOtherClient() {

@@ -14,6 +14,8 @@ public class Server {
     String Id;
     HashMap<String,ServerSocketConnection> serverSocketConnectionHashMap = new HashMap<>();
     HashMap<String, String> serverAndWorkFolder = new HashMap<>();
+    File[] listOfFiles;
+    String allFiles = "";
 
     public String getId() {
         return Id;
@@ -40,20 +42,26 @@ public class Server {
         }
 
         Pattern START = Pattern.compile("^START$");
+        Pattern SHOW_FILES = Pattern.compile("^SHOW_FILES$");
 
         int rx_cmd(Scanner cmd){
             String cmd_in = null;
             if (cmd.hasNext())
                 cmd_in = cmd.nextLine();
             Matcher m_START = START.matcher(cmd_in);
+            Matcher m_SHOW_FILES = SHOW_FILES.matcher(cmd_in);
 
             if(m_START.find()){
                 System.out.println("Socket connection test function");
                 try {
-                    currentServer.writeToFile("a.txt", new Message("hello", "hello"));
+                    System.out.println("STATUS UP");
                 }
                 catch (Exception e){}
 
+            }
+
+            else if( m_SHOW_FILES.find()){
+                currentServer.fileHostedString("0");
             }
 
             return 1;
@@ -75,6 +83,18 @@ public class Server {
         serverSocketConnectionHashMap.get(message.getClientId()).sendWriteAcknowledge(fileName);
     }
 
+
+    public synchronized void fileHostedString(String requestingClientId){
+        if(allFiles.isEmpty()) {
+            File folder = new File("./" + this.serverAndWorkFolder.get(this.getId()) + "/");
+            listOfFiles = folder.listFiles();
+            for (int fileIndex = 0; fileIndex < listOfFiles.length; fileIndex++) {
+                this.allFiles = this.allFiles + listOfFiles[fileIndex].getName().substring(0, listOfFiles[fileIndex].getName().lastIndexOf("."));
+            }
+        }
+
+        serverSocketConnectionHashMap.get(requestingClientId).sendHostedFiles(this.allFiles);
+    }
 
 
     public synchronized void readLastFile(String fileName, String requestingClientId) {
@@ -101,8 +121,8 @@ public class Server {
         else {
             returnMessage = new Message("EMPTY FILE - NO CLIENT ID", "EMPTY FILE - NO TIME STAMP");
         }
-        ServerSocketConnection serverSocketConnection =  serverSocketConnectionHashMap.get(requestingClientId);
-        serverSocketConnection.sendLastMessageOnFile(fileName,returnMessage);
+
+            serverSocketConnectionHashMap.get(requestingClientId).sendLastMessageOnFile(fileName,returnMessage);
 
     }
 

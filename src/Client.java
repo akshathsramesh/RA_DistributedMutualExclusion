@@ -29,8 +29,8 @@ public class Client {
     Boolean usingCS = false;
     List<String> deferredReplyList = new LinkedList<>();
     String requestedCSForFile;
-    Integer minimumDelay = 2000;
-    String availableFileList = "abc";
+    Integer minimumDelay = 5000;
+    String availableFileList = "";
     Boolean criticalSectionReadOrWriteComplete = true;
     String fileProcessOption = "RW";
     Integer noOfServer = 0;
@@ -87,6 +87,7 @@ public class Client {
         Pattern CONNECTION_DETAIL = Pattern.compile("^CONNECTION_DETAIL$");
         Pattern REQUEST = Pattern.compile("^REQUEST$");
         Pattern AUTO_REQUEST = Pattern.compile("^AUTO_REQUEST$");
+        Pattern SHOW_FILES = Pattern.compile("^SHOW_FILES$");
         int rx_cmd(Scanner cmd){
             String cmd_in = null;
             if (cmd.hasNext())
@@ -98,6 +99,7 @@ public class Client {
             Matcher m_AUTO_REQUEST = AUTO_REQUEST.matcher(cmd_in);
             Matcher m_SERVER_SETUP = SERVER_SETUP.matcher(cmd_in);
             Matcher m_SERVER_SETUP_TEST = SERVER_SETUP_TEST.matcher(cmd_in);
+            Matcher m_SHOW_FILES = SHOW_FILES.matcher(cmd_in);
             if(m_SETUP.find()){
                 setupConnections(current);
             }
@@ -132,12 +134,16 @@ public class Client {
 
             else if (m_SERVER_SETUP.find()){
                 setupServerConnection(current);
+                enquireHostedFiles();
             }
 
             else if(m_SERVER_SETUP_TEST.find()){
                 sendTestWrite();
             }
 
+            else if( m_SHOW_FILES.find()){
+                System.out.println("Hosted Files: "+ availableFileList);
+            }
             return 1;
         }
 
@@ -161,7 +167,7 @@ public class Client {
             System.out.println("CONNECTING CLIENTS");
             Integer clientId;
             for(clientId = Integer.valueOf(this.Id) + 1; clientId < allClientNodes.size(); clientId ++ ) {
-                Socket clientConnection = new Socket("localhost", Integer.valueOf(allClientNodes.get(clientId).getPort()));
+                Socket clientConnection = new Socket(this.allClientNodes.get(clientId).getIpAddress(), Integer.valueOf(allClientNodes.get(clientId).getPort()));
                 SocketConnection socketConnection = new SocketConnection(clientConnection, this.getId(), true,current);
                 if(socketConnection.getRemote_id() == null){
                     socketConnection.setRemote_id(Integer.toString(clientId));
@@ -181,7 +187,7 @@ public class Client {
             System.out.println("CONNECTING SERVER");
             Integer serverId;
             for (serverId =0; serverId < allServerNodes.size(); serverId ++){
-                Socket serverConnection = new Socket("localhost", Integer.valueOf(this.allServerNodes.get(serverId).getPort()));
+                Socket serverConnection = new Socket(this.allServerNodes.get(serverId).getIpAddress(), Integer.valueOf(this.allServerNodes.get(serverId).getPort()));
                 SocketConnection socketConnectionServer = new SocketConnection(serverConnection,this.getId(),true,current);
                 if(socketConnectionServer.getRemote_id() == null){
                     socketConnectionServer.setRemote_id(Integer.toString(serverId));
@@ -441,6 +447,13 @@ public class Client {
         current_node.start();
     }
 
+    public synchronized void setHostedFiles(String hostedFiles){
+        this.availableFileList = hostedFiles;
+    }
+
+    public void enquireHostedFiles(){
+        socketConnectionHashMapServer.get("0").sendEnquire();
+    }
 
     public void setClientList(){
         try {

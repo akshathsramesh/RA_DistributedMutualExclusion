@@ -115,7 +115,7 @@ public class Server {
         Message returnMessage;
         if(!lastLine.isEmpty()) {
             List<String> message = Arrays.asList(lastLine.split(","));
-            System.out.println(message.get(1) + " Value of last line");
+            System.out.println("Returning last line read as Message");
             returnMessage = new Message(message.get(0), message.get(1));
         }
         else {

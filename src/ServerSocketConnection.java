@@ -62,7 +62,6 @@ public class ServerSocketConnection {
             }
 
             else if(cmd_in.equals("WRITE_TO_FILE")){
-
                 System.out.println("Received write to file");
                 String fileName = cmd.readLine();
                 String requestingClientId = cmd.readLine();
@@ -71,6 +70,7 @@ public class ServerSocketConnection {
             }
 
             else if( cmd_in.equals("READ_FROM_FILE")){
+                System.out.println("Received read from file");
                 String fileName = cmd.readLine();
                 String requestingClientId = cmd.readLine();
                 my_master.readLastFile(fileName , requestingClientId);
@@ -103,7 +103,7 @@ public class ServerSocketConnection {
 
 
     public synchronized void sendWriteAcknowledge(String fileName){
-        System.out.println("Sending write ACK" + fileName);
+        System.out.println("Sending write ACK: " + fileName);
         out.println("WRITE_TO_FILE_ACK");
         out.println(fileName);
     }

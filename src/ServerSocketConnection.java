@@ -76,6 +76,11 @@ public class ServerSocketConnection {
                 my_master.readLastFile(fileName , requestingClientId);
             }
 
+            else if( cmd_in.equals("ENQUIRE")){
+                String requestingClientId = cmd.readLine();
+                my_master.fileHostedString(requestingClientId);
+            }
+
         }
         catch (Exception e){}
         return 1;
@@ -103,6 +108,12 @@ public class ServerSocketConnection {
         out.println(fileName);
     }
 
+
+    public synchronized void sendHostedFiles(String hostedFiles){
+        System.out.println("Sending hosted file info");
+        out.println("ENQUIRE_ACK");
+        out.println(hostedFiles);
+    }
 
 
 

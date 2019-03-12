@@ -14,4 +14,4 @@ Java programming language. Thread and/or socket programming and its APIs.
 * READ: A request to read last line from a given file.
 * WRITE: string <clientid, timestamp>. Timestamp is the value of the clients, local clock when the WRITE request is generated
 * Assumption 1 : Set of file does not change during the program’s execution.
-* Assumption 2 : No server failureoccurs during the execution of the program.
+* Assumption 2 : No server failure occurs during the execution of the program.

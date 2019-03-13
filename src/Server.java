@@ -33,6 +33,8 @@ public class Server {
         this.allServerNodes = allServerNodes;
     }
 
+
+    /*Support terminal operation */
     public class CommandParser extends Thread{
 
         Server currentServer;
@@ -75,7 +77,7 @@ public class Server {
     }
 
 
-
+    /*write to file and send ack*/
     public  synchronized void writeToFile( String fileName, Message message) throws IOException {
         BufferedWriter writer = new BufferedWriter(new FileWriter( "./"+ this.serverAndWorkFolder.get(this.getId())+ "/" +fileName, true));
         writer.append(message.getClientId()+","+message.getTimeStamp()+"\n");
@@ -83,7 +85,7 @@ public class Server {
         serverSocketConnectionHashMap.get(message.getClientId()).sendWriteAcknowledge(fileName);
     }
 
-
+    /*replying to enquire command*/
     public synchronized void fileHostedString(String requestingClientId){
         if(allFiles.isEmpty()) {
             File folder = new File("./" + this.serverAndWorkFolder.get(this.getId()) + "/");
@@ -96,7 +98,7 @@ public class Server {
         serverSocketConnectionHashMap.get(requestingClientId).sendHostedFiles(this.allFiles);
     }
 
-
+    /*read last line from file and send the reply */
     public synchronized void readLastFile(String fileName, String requestingClientId) {
         String sCurrentLine;
         String lastLine= "";
@@ -127,6 +129,7 @@ public class Server {
     }
 
 
+    /*Consume config file and set the work folder for a giver server ID*/
     public void setServerWorkFolder(){
         try {
             BufferedReader br = new BufferedReader(new FileReader("serverWorkFolder.txt"));
@@ -153,6 +156,7 @@ public class Server {
         }
     }
 
+    /*Consume server config file and set the details for the use of current node*/
     public void setServerList(){
         try {
             BufferedReader br = new BufferedReader(new FileReader("ServerAddressAndPorts.txt"));
@@ -180,6 +184,7 @@ public class Server {
         }
     }
 
+    /*Server listen socket and add socket connection capability*/
     public void serverSocket(Integer serverId, Server currentServer){
         try
         {

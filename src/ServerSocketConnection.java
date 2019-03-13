@@ -3,6 +3,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
+
+/*Consuming in out buffer for given socket connection and send out command as directed by parent node as well as receive send request to process by parent node */
 public class ServerSocketConnection {
     Socket otherClient;
     String my_id;

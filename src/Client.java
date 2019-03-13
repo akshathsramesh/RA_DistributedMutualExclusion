@@ -72,6 +72,7 @@ public class Client {
         this.logicalClock = logicalClock;
     }
 
+    /* Command Parser to look for input fom terminal once the client is running*/
     public class CommandParser extends Thread{
 
         Client current;
@@ -154,6 +155,7 @@ public class Client {
         }
     }
 
+    /*Implements and supports a test command to be sent to server*/
     public void sendTestWrite(){
         Integer remoteServer;
         for (remoteServer = 0; remoteServer < this.socketConnectionListServer.size(); remoteServer++){
@@ -162,6 +164,7 @@ public class Client {
 
     }
 
+    /*Given client ID  = 0 this module will connect with other clients starting from 1 ... n */
     public void setupConnections(Client current){
         try {
             System.out.println("CONNECTING CLIENTS");
@@ -182,6 +185,8 @@ public class Client {
         }
     }
 
+
+    /*Helps establish the socket connection to all the servers available*/
     public void setupServerConnection(Client current){
         try{
             System.out.println("CONNECTING SERVER");
@@ -204,6 +209,7 @@ public class Client {
 
     }
 
+    /*test function */
     public void sendP(){
         System.out.println("Sending P");
         Integer i;
@@ -212,6 +218,7 @@ public class Client {
         }
     }
 
+    /*Processing read acknowledge - critical section ack and  deliver outstanding requests*/
     public synchronized void fileReadAcknowledgeProcessor(String respondingServerId, String fileNameRead, Message lastMessage ){
         System.out.println("Processing read from file request acknowledge");
         System.out.println("CRITICAL SECTION READ - COMPLETED");
@@ -220,6 +227,7 @@ public class Client {
         releaseCSCleanUp();
     }
 
+    /*Processs write ack - wait for n servers to respond with ack and then send out deferred message*/
     public synchronized void processWriteAck(String fileName){
         System.out.println("Inside WRITE_TO_FILE_ACK processor ");
         if(fileName.equals(this.requestedCSForFile)){
@@ -233,6 +241,7 @@ public class Client {
         }
     }
 
+    /*Thread to generate random read or write critical section access on random files*/
     public void sendAutoRequest(){
 
         Thread sendAuto = new Thread(){
@@ -258,6 +267,7 @@ public class Client {
         }
 
 
+   /*RX - Process request received and defer if necessary*/
 
     public synchronized void processRequest(String RequestingClientId, Integer RequestingClientLogicalClock, String fileName){
         if( fileName.equals(this.requestedCSForFile)) {
@@ -305,6 +315,7 @@ public class Client {
     }
 
 
+    /*Process reply of critical section replies. Enter if all the replies are received*/
     public synchronized void processReply(String ReplyingClientId, String fileName){
         if(fileName.equals(this.requestedCSForFile)) {
             System.out.println("Inside Process Reply for replying Client:  " + ReplyingClientId +" for the file " + fileName);
@@ -312,7 +323,6 @@ public class Client {
             this.outStandingReplyCount = this.outStandingReplyCount - 1;
             if (this.outStandingReplyCount == 0) {
                 enterCriticalSection(fileName);
-//                releaseCSCleanUp();
             }
         }
         else {
@@ -320,6 +330,7 @@ public class Client {
         }
     }
 
+    /*Used to consume the client socket connection available and send out request*/
     public synchronized void sendRequest(String fileName){
         if(!(this.requestedCS || this.usingCS)) {
             this.requestedCS = true;
@@ -344,6 +355,7 @@ public class Client {
         }
     }
 
+    /*Once Critical section acccess is granted client uses the logic to connect with server and do a read or write*/
     public void enterCriticalSection(String fileName){
         System.out.println("Entering critical section READ/WRITE TO SERVER");
         this.usingCS = true;
@@ -383,16 +395,9 @@ public class Client {
         }
     }
 
+    /*After critical section execution the deferred messages will be replied and necessary operations flags are set*/
     public void releaseCSCleanUp(){
 
-//
-//        while(!(this.criticalSectionReadOrWriteComplete)){
-//            try {
-//                System.out.println("WAITING ON READ OR WRITE ACKNOWLEDGE");
-//                TimeUnit.SECONDS.sleep(1);
-//            }
-//            catch(Exception e){}
-//        }
         System.out.println("Recieved necessary acknowledgement");
         System.out.println("----------ENTERING CLEAN UP: SEND DEFERRED REPLY AND FLAG RESET --------------------------------");
         this.usingCS = false;
@@ -407,6 +412,7 @@ public class Client {
     }
 
 
+    /*Used to create client listen socket and use the listener to add requesting socket connection*/
     public void clientSocket(Integer ClientId, Client current){
         try
         {
@@ -455,6 +461,7 @@ public class Client {
         socketConnectionHashMapServer.get("0").sendEnquire();
     }
 
+    /*Consuming client config file and save the information*/
     public void setClientList(){
         try {
             BufferedReader br = new BufferedReader(new FileReader("ClientAddressAndPorts.txt"));
@@ -482,7 +489,7 @@ public class Client {
         }
     }
 
-
+    /*Consume the server config file and save the information*/
     public void setServerList(){
         try {
             BufferedReader br = new BufferedReader(new FileReader("ServerAddressAndPorts.txt"));
